@@ -39,6 +39,8 @@ public class testHand extends GUI implements Runnable {
     int MouseState = 0;
     int MousePointIndex = 0; // at the start of capture data
 
+    double Errors[ ];
+    int NumErrors = 0;
 
     int num_cap=0;
     int cap_x[] = new int[20000];
@@ -75,6 +77,8 @@ public class testHand extends GUI implements Runnable {
         MouseThread = new Thread(this);
         MouseThread.start();
        }
+       Errors = new double[3000];
+       NumErrors = 0;
     }
 
     public void train() {
@@ -101,6 +105,7 @@ public class testHand extends GUI implements Runnable {
       }
       for (int i=0; i<3000; i++) {
         double error = network.Train(ins, outs, sum);
+        Errors[NumErrors++] = error;
         if ((i % 10) == 0) {
            P("Output error for iteration " +
              i + " =" + error + "\n");
@@ -110,8 +115,46 @@ public class testHand extends GUI implements Runnable {
     }
 
     public void paintToDoubleBuffer(Graphics g) {
+    	int leftEdge = 210;
+    	int topEdge = 10;
+    	int layerSpacing = 20;
+
+    	paintNeuronLayer(g, leftEdge, topEdge, "Inputs:",
+    	                     network.Inputs, network.NumInputs);
+
+    	paintWeights(g, leftEdge, topEdge + layerSpacing, "Weights 1:", 
+    	                    network.W1, 
+    	                    network.NumInputs, network.NumHidden);
+
+    	paintNeuronLayer(g, leftEdge,topEdge+2*layerSpacing+(network.NumHidden)*12, 
+    	                    "Hidden:",
+    	                    network.Hidden, network.NumHidden);
+
+    	paintWeights(g, leftEdge, topEdge + 3*layerSpacing + (network.NumHidden)*12, 
+    	                   "Weights 2:", 
+    	                   network.W2, network.NumHidden, network.NumOutputs);
+
+    	paintNeuronLayer(g, leftEdge, 
+    	                   topEdge+4*layerSpacing+(network.NumHidden+network.NumOutputs)*12, 
+    	                  "Outputs:", network.Outputs, network.NumOutputs); 
         g.drawString("Captured handwriting data",
                               X_Pos[0], Y_Pos - 15);
+        
+        g.drawString("Cumulative error summed over output neurons", X_Pos[0], Y_Pos + 300);
+        if (NumErrors < 2)  return;
+        int x1= 0; 
+        int x2=0;
+        int y1 = Y_Pos + 300 - (int)(100.0f * Errors[0]); 
+        int y2=0;
+        g.setColor(Color.red);
+        for (int i=1; i<NumErrors-1; i++) {
+            x2 = 4*i;
+            y2 = Y_Pos + 300 - (int)(100.0f * Errors[i]);
+            g.drawLine(x1, y1, x2, y2);
+            x1 = x2;
+            y1 = y2;
+        }
+        canvas.repaint();
 
         for (int m=0; m<NUM; m++) {
             g.drawString(Chars[m], X_Pos[m], Y_Pos);
@@ -263,6 +306,24 @@ public class testHand extends GUI implements Runnable {
             repaint();
         }
     }
+    
+    private void paintNeuronLayer(Graphics g, int x, int y, String title, double values[], int num) {
+		for (int i=0; i<num; i++) {
+			paintGridCell(g, x+60 + i*12, y, 10, 
+			       values[i], -0.5f, 0.5f);
+			}
+		g.drawString(title, x, y+10);
+	}
+	
+	private void paintWeights(Graphics g, int x, int y, String title, double values[][], int num1, int num2) {
+		for (int i=0; i<num1; i++) {
+			for (int j=0; j<num2; j++) {
+			paintGridCell(g, x+60 + i*12, y + j * 12, 10, 
+			              values[i][j], -1.5f, 1.5f);
+			}
+		}
+		g.drawString(title, x, y+10);
+	}
     
     public static void main(String[] args) { 
         testHand myApp = new testHand (); 
